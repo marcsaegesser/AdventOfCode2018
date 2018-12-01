@@ -25,5 +25,5 @@ lazy val advent2018 = (project in file("."))
       "org.scalacheck"             %% "scalacheck"                     % "1.13.4"  % "test"
     ),
 
-    initialCommands := "import org.saegesser._"
+    initialCommands := "import advent._"
   )
