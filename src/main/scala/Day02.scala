@@ -21,25 +21,49 @@ object Day02 {
   /** Given a pair of Strings find their longest common prefix. Return that prefix
     * and the remaining tail of each string.
     */
-  def commonPrefix(pair: (String, String)): (String, (String, String)) = {
+  def commonPrefix(a: String, b: String): (String, (String, String)) = {
     def helper(p: List[Char], s1: List[Char], s2: List[Char]): (String, (String, String)) =
       (s1, s2) match {
         case (h1 :: t1, h2 :: t2) if h1 == h2 => helper(h1 :: p, t1, t2)
         case _                               => (p.reverse.mkString, (s1.mkString, s2.mkString))
       }
 
-    helper(List(), pair._1.toList, pair._2.toList)
+    helper(List.empty[Char], a.toList, b.toList)
   }
 
-  /** This solution is bogus. It's based on a 'clever' (but wrong, clever is usually wrong) observation.
-    * It happened to get the right answer, but it won't always.
-    */
-  def part2(input: List[String]): Iterator[String] =
-    input.sorted.sliding(2, 1).collect { case a :: b :: Nil => (a, b) }                   // Sort the input and create pairs of adjacent items
-      .map(commonPrefix)                                                                  // Extract the common prefix from each pair and both remaining tails
-      .collect { case (p, (t1, t2)) if t1.size > 0 && t2.size > 0  && t1.tail == t2.tail =>  // Collect the pairs with identical, non-empty tails
-        p + t1.tail
+  sealed trait SearchState
+  case class   Searching(l1: List[String], l2: List[String]) extends SearchState
+  case class   Complete(ms: String)                          extends SearchState
+  case object  Failed                                        extends SearchState
+
+  def nextState(s: SearchState): SearchState =
+    s match {
+      case Searching(l1@(h1::t1), l2@(h2::t2)) =>
+        commonPrefix(h1, h2) match {
+          case ("", _)                                => Searching(t1, t1)        // No common prefix, advance l1, reset l2
+          case (_, ("", _))                           => Searching(l1, t2)        // Prefix is the whole string, advance l2
+          case (_, (_, ""))                           => Searching(l1, t2)
+          case (p, (tt1, tt2)) if tt1.tail == tt2.tail => Complete(p ++ tt1.tail)  // Got one!
+          case (p, _)                                 => Searching(l1, t2)        // Suffix didn't match, advance l2
+        }
+      case Searching(Nil, _) => Failed
+      case Searching(_, Nil) => Failed
+      case Complete(_)       => s
+      case Failed            => s
+    }
+
+  def part2(input: List[String]): Option[String] = {
+    def helper(s: SearchState): Option[String] = {
+      nextState(s) match {
+        case ns: Searching => helper(ns)
+        case Complete(ms)  => Some(ms)
+        case Failed        => None
       }
+    }
+
+    val sorted = input.sorted
+    helper(Searching(sorted, sorted))
+  }
 
   def readFile(file: String): List[String] = {
     io.Source.fromFile(file)
