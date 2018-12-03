@@ -31,13 +31,8 @@ object Day02 {
     helper(List(), pair._1.toList, pair._2.toList)
   }
 
-  /** If two strings in the input list differ by only a single character
-    * then they will sort to be adjacent to each other. After sorting
-    * the input list we only need to compare adjacent elements for a
-    * match. This can be done easily using List.sliding(2, 1) to
-    * create a list of pairs of adjacent elements. After that we just
-    * traverse the list of pairs looking for any that match our
-    * constraints.
+  /** This solution is bogus. It's based on a 'clever' (but wrong, clever is usually wrong) observation.
+    * It happened to get the right answer, but it won't always.
     */
   def part2(input: List[String]): Iterator[String] =
     input.sorted.sliding(2, 1).collect { case a :: b :: Nil => (a, b) }                   // Sort the input and create pairs of adjacent items
