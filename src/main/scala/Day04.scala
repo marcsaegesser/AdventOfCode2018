@@ -31,8 +31,7 @@ object Day04 {
   /** For all guards, which was asleep the most.
     */
   def maxSleeper(data: Map[GuardId, List[Event]]): GuardId =
-    data.mapValues (_.sliding(2, 2).collect { case Asleep(g1, d1, m1) :: Awake(g2, d2, m2) :: Nil => m2 - m1 })
-      .mapValues(_.sum)
+    data.mapValues (_.sliding(2, 2).collect { case Asleep(g1, d1, m1) :: Awake(g2, d2, m2) :: Nil => m2 - m1 }.sum)
       .toList.sortBy(_._2).reverse.head._1   // OK, this makes me feel dirty
 
   /** For a given guard, what minute were they asleep the most and how many days asleep at that minute.
