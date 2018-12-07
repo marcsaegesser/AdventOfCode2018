@@ -38,13 +38,15 @@ object Day07 {
     toAdd.foldLeft(queue) { case ((q, (t, s))) => addDelta(t, s, q) }
   }
 
+  /** A delta queue
+    */
   def addDelta(time: Int, step: Step, queue: List[(Int, Step)]): List[(Int, Step)] = {
     def helper(remaining: Int, left: List[(Int, Step)], right: List[(Int, Step)]): List[(Int, Step)] = {
-      (left, right) match {
-        case (l, Nil)     => ((remaining, step) :: l).reverse
-        case (l, h :: t)  =>
-          if( remaining <= h._1 ) (l.reverse :+ ((remaining, step)) :+ ((h._1-remaining, h._2))) ++ t
-          else                   helper(remaining - h._1, h :: l, t)
+      right match {
+        case Nil     => ((remaining, step) :: left).reverse
+        case  h :: t  =>
+          if( remaining <= h._1 ) left.reverse ++ List((remaining, step), (h._1-remaining, h._2))  ++ t
+          else                   helper(remaining - h._1, h :: left, t)
       }
     }
 
