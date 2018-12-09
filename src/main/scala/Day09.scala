@@ -1,7 +1,17 @@
 package advent
 
 object Day09 {
-  case class Game(players: Zipper[Int], marbles: List[Int], board: Zipper[Int]) {
+
+  def part1(file: String): List[Long] =
+    loadData(file).map(playGame).map(_.players.toList.max)
+
+  def part2(file: String): List[Long] =
+    loadData(file, 100).map(playGame).map(_.players.toList.max)
+
+
+
+
+  case class Game(players: Zipper[Long], marbles: List[Long], board: Zipper[Long]) {
     def hasNext: Boolean = !this.marbles.isEmpty
 
     def nextState: Game =
@@ -76,11 +86,11 @@ object Day09 {
 
   val gameRegex = """(\d+) players; last marble is worth (\d+) points""".r
 
-  def parseGame(input: String): Game =
+  def parseGame(input: String, scale: Int): Game =
     input match {
-      case gameRegex(p, m) => Game(Zipper.fromList(List.fill(p.toInt)(0)), (1 to m.toInt).toList, Zipper(0))
+      case gameRegex(p, m) => Game(Zipper.fromList(List.fill(p.toInt)(0)), (1 to (m.toInt*scale)).map(_.toLong).toList, Zipper(0))
     }
 
-  def loadData(file: String): List[Game] =
-    io.Source.fromFile(file).getLines().toList.map(parseGame)
+  def loadData(file: String, scale: Int = 1): List[Game] =
+    io.Source.fromFile(file).getLines().toList.map(l => parseGame(l, scale))
 }
