@@ -9,21 +9,19 @@ object Day09 {
     loadData(file, 100).map(playGame).map(_.players.toList.max)
 
 
-
-
-  case class Game(players: Zipper[Long], marbles: List[Long], board: Zipper[Long]) {
-    def hasNext: Boolean = !this.marbles.isEmpty
+  case class Game(players: Zipper[Long], marble: Long, maxMarble: Long, board: Zipper[Long]) {
+    def hasNext: Boolean = marble <= maxMarble
 
     def nextState: Game =
       this match {
-        case Game(p, Nil, b) => this
-        case Game(p, h :: t, b) =>
-          if(h % 23 == 0) {
+        case Game(p, m, x, b) if m > x => this
+        case Game(p, m, _, b) =>
+          if(m % 23 == 0) {
             val (v, bb) = b.moveLeft(7).take
-            val pp = p.update(players.focus + h + v).moveRight
-            Game(pp, t, bb)
+            val pp = p.update(players.focus + m + v).moveRight
+            Game(pp, m+1, maxMarble, bb)
           } else {
-            Game(p.moveRight, t, b.moveRight.addRight(h))
+            Game(p.moveRight, m+1, maxMarble, b.moveRight.addRight(m))
           }
       }
   }
@@ -33,6 +31,11 @@ object Day09 {
     else          g
 
 
+  /** A very simple implementation of a circular Zipper with the
+    * assumption that everything is NOT EMPTY.
+    *
+    * This is sufficient for this puzzle but NOT the REAL WORLD.
+    */
   case class Zipper[A](l: List[A], focus: A, r: List[A]) {
     def moveRight: Zipper[A] =
       this match {
@@ -88,7 +91,7 @@ object Day09 {
 
   def parseGame(input: String, scale: Int): Game =
     input match {
-      case gameRegex(p, m) => Game(Zipper.fromList(List.fill(p.toInt)(0)), (1 to (m.toInt*scale)).map(_.toLong).toList, Zipper(0))
+      case gameRegex(p, m) => Game(Zipper.fromList(List.fill(p.toInt)(0)), 1, m.toLong*scale, Zipper(0))
     }
 
   def loadData(file: String, scale: Int = 1): List[Game] =
