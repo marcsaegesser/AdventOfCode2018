@@ -2,6 +2,12 @@ package advent
 
 object Day05 {
 
+  def day05(): Unit = {
+    val input = loadData("data/Day05.txt")
+    println(s"Day05.part1 = ${part1(input)}")
+    println(s"Day05.part2 = ${part2(input)}")
+  }
+
   def part1(input: List[Char]): Int =
     runReaction(input).size
 

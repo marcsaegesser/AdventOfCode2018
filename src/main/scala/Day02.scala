@@ -2,6 +2,12 @@ package advent
 
 object Day02 {
 
+  def day02(): Unit = {
+    val input = readFile("data/Day02.txt")
+    println(s"Day02.part1 = ${part1(input)}")
+    println(s"""Day02.part2 = ${part2(input).getOrElse("Error!")}""")
+  }
+
   /** For each string collect all the occurences of each letter (i.e. Map[Char, List[Char]]).
     * The size of each list is the number of occurences of that character. We don't care about
     * specific characters just the counts so extract just the values from Map and convert the

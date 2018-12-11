@@ -1,6 +1,8 @@
 package advent
 
 object Day11 {
+  val puzzleInput = 6392
+
   type Power = Int
   type Size = Int
   val GridSize = 300
@@ -10,6 +12,14 @@ object Day11 {
   }
 
   type Grid = Map[Coord, Int]
+
+  def day11(): Unit = {
+    val p1 = part1(puzzleInput)
+    println(s"Day11.part1 = ${p1._1.x},${p1._1.y}")
+    val p2 = part2(puzzleInput)
+    println(s"Day11.part2 = ${p2._1.x},${p2._1.y},${p2._3}")
+  }
+
 
   def part1(serialNumber: Int): (Coord, Power, Size) =
     maxForSize(createGrid(serialNumber), 3)
@@ -31,7 +41,6 @@ object Day11 {
   }
 
   def maxSizeAtPoint(grid: Grid, p: Coord): (Coord, Int, Int) = {
-    println(s"maxSizeAtPoint: $p")
     val sizeLimit = math.min(GridSize - p.x, GridSize - p.y) + 1
 
     def helper(maxPower: Power, maxSize: Size, currentPwr: Power, currentSize: Size): (Power, Size) = {

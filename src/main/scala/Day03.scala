@@ -6,6 +6,12 @@ object Day03 {
 
   case class Patch(id: IdNum, x: Int, y: Int, w: Int, h: Int)
 
+  def day03(): Unit = {
+    val input = loadData("data/Day03.txt")
+    println(s"Day03.part1 = ${part1(input)}")
+    println(s"Day03.part2 = ${part2(input)}")
+  }
+
   def patchToCoords(p: Patch): List[(Coord, IdNum)] =
     for {
       xs <- (p.x until p.x+p.w).toList

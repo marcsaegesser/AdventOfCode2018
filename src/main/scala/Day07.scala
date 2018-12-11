@@ -6,6 +6,12 @@ object Day07 {
   type Step = Char
   type Constraints = Map[Step, List[Step]]
 
+  def day07(): Unit = {
+    val input = loadData("data/Day07.txt")
+    println(s"Day07.part1 = ${part1(input)}")
+    println(s"Day07.part2 = ${part2(5, 60, input)}")
+  }
+
   def part1(constraints: Constraints): String = {
     def helper(accum: List[Step], cs: Constraints): String = {
       nextStep(cs) match {
@@ -20,8 +26,7 @@ object Day07 {
   def part2(numWorkers: Int, baseTime: Int, constraints: Constraints): Int = {
     def helper(elapsed: Int, queue: List[(Int, Step)], cs: Constraints): Int = {
       val nextQueue = fillQueue(readySteps(cs), numWorkers, baseTime, queue)
-      println(s"$elapsed: $nextQueue")
-      nextQueue match {
+        nextQueue match {
         case Nil    => elapsed
         case h :: t => helper(elapsed + h._1, t, runStep(h._2, cs))
       }

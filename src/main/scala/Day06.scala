@@ -7,6 +7,12 @@ package advent
 object Day06 {
   type Coord = (Int, Int)
 
+  def day06(): Unit = {
+    val input = loadData("data/Day06.txt")
+    println(s"Day06.part1 = ${part1(input)._2}")
+    println(s"Day06.part2 = ${part2(10000, input)}")
+  }
+
   def part1(locations: List[Coord]): (Coord, Int) = {
     val region = bounds(locations)
     val closestLocations =

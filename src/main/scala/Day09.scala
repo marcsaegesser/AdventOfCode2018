@@ -2,6 +2,12 @@ package advent
 
 object Day09 {
 
+  def day09(): Unit = {
+    println(s"""Day09.part1 = ${part1("data/Day09.txt")}""")
+    println(s"""Day09.part2 = ${part2("data/Day09.txt")}""")
+
+  }
+
   def part1(file: String): List[Long] =
     loadData(file).map(playGame).map(_.players.toList.max)
 

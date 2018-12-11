@@ -8,6 +8,11 @@ object Day08 {
     }
   }
 
+  def day08(): Unit = {
+    val input = loadTree("data/Day08.txt")
+    println(s"Day08.part1 = ${part1(input)}")
+    println(s"Day08.part2 = ${part2(input)}")
+  }
 
   def part1(tree: Tree): Int = {
     tree.fold(0) { (s, t) =>

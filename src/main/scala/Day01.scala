@@ -1,6 +1,11 @@
 package advent
 
 object Day01 {
+  def day01(): Unit = {
+    val data = readFile("data/Day01.txt")
+    println(s"Day01.part1 = ${part1(data)}")
+    println(s"Day01.part2 = ${part2(data)}")
+  }
 
   def part1(data: List[Int]): Int = data.sum
 

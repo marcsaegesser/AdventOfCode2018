@@ -7,6 +7,12 @@ object Day04 {
   type Minute = Int
   type Time = (Hour, Minute)  // (hour, minute)
 
+  def day04(): Unit = {
+    val input = mkEvents(loadData("data/Day04.txt"))
+    println(s"Day04.part1 = ${part1(input)}")
+    println(s"Day04.part2 = ${part2(input)}")
+  }
+
   def part1(events: Map[GuardId, List[Event]]): Int = {
     val s = maxSleeper(events)
     val (m, _) = maxMinute(events(s))
