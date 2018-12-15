@@ -25,13 +25,55 @@ object Day15 {
   val Left  = Coord(-1, 0)
 
   sealed trait Unit
-  sealed trait LiveUnit { def hp: Int; def power: Int }
+  sealed trait LiveUnit extends Unit { def hp: Int; def power: Int }
   case object Wall                   extends Unit
   case object Open                   extends Unit
-  case class Elf(hp: Int, power: Int)    extends Unit with LiveUnit
-  case class Goblin(hp: Int, power: Int) extends Unit with LiveUnit
+  case class Elf(hp: Int, power: Int)    extends LiveUnit
+  case class Goblin(hp: Int, power: Int) extends LiveUnit
 
   type Board = Map[Coord, Unit]
+
+  def runRound(board: Board): Board = {
+    // val live = liveUnits(board)
+
+    ???
+  }
+
+  def runUnit(board: Board, p: Coord, u: LiveUnit): Board = {
+    val targets = targetUnits(board, p, u)
+
+    // Can attack
+
+    // Move
+    moveUnit(board, p, u, targets).map { to => updateBoard(board, p, to, u) }
+    ???
+  }
+
+  def updateBoard(board: Board, from: Coord, to: Coord, u: Unit): Board =
+    board - from + ((to, u))
+
+  object CoordDistOrdering extends Ordering[(Coord, Int)] {
+    def compare(a: (Coord, Int), b: (Coord, Int)): Int =
+      if(a._2 == b._2) CoordOrdering.compare(a._1, b._1)
+      else            a._2 compare b._2
+  }
+
+  def moveUnit(board: Board, p: Coord, u: LiveUnit, targets: List[(Coord, LiveUnit)]): Option[Coord] = {
+      reachableTargetPoints(board, p, targets)
+        .map(tp => (tp, distance(p, tp)))
+        .toList
+        .sorted(CoordDistOrdering)
+        .headOption
+        .map{ case (t, _) => chooseStep(board, p, t) }
+  }
+
+  def chooseStep(board: Board, p: Coord, t: Coord): Coord = {
+    adjacencies(p)
+      .filter(c => isOpen(board, c))
+      .map(c => (c, distance(c, t)))
+      .sorted(CoordDistOrdering)
+      .head._1
+  }
 
   def isOpen(board: Board, p: Coord): Boolean = !board.isDefinedAt(p)
 
@@ -48,16 +90,18 @@ object Day15 {
   def liveUnits(board: Board): List[(Coord, LiveUnit)] =
     board.toList.collect { case (c, u: LiveUnit) => (c, u) }.sortBy(_._1)
 
-  def targetUnits(board: Board, u: LiveUnit, p: Coord): List[(Coord, LiveUnit)] = {
+  def targetUnits(board: Board, p: Coord, u: LiveUnit): List[(Coord, LiveUnit)] = {
     u match {
       case e: Elf    => liveUnits(board).collect { case (c, g: Goblin) => (c, g) }
       case g: Goblin => liveUnits(board).collect { case (c, g: Elf) => (c, g) }
     }
   }
 
-  def targetPoints(board: Board, ts: List[(Coord, LiveUnit)]): Set[Coord] = {
+  def targetPoints(board: Board, ts: List[(Coord, LiveUnit)]): Set[Coord] =
     ts.flatMap ( t => adjacencies(t._1) ).filter(p => isOpen(board, p)).toSet
-  }
+
+  def reachableTargetPoints(board: Board, p: Coord, ts: List[(Coord, LiveUnit)]): Set[Coord] =
+    reachablePoints(board, p) & targetPoints(board, ts)
 
   def showUnit(u: Unit): String =
     u match {
