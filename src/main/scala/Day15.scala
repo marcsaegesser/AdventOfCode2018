@@ -1,7 +1,13 @@
 package advent
 
 object Day15 {
-  case class Coord(x: Int, y: Int)
+  case class Coord(x: Int, y: Int) {
+    def +(other: Coord): Coord = Coord(x+other.x, y+other.y)
+  }
+  val Up    = Coord(0, -1)
+  val Right = Coord(1, 0)
+  val Down  = Coord(0, 1)
+  val Left  = Coord(-1, 0)
 
   sealed trait Unit
   sealed trait LiveUnit { def hp: Int; def power: Int }
@@ -11,6 +17,21 @@ object Day15 {
   case class Goblin(hp: Int, power: Int) extends Unit with LiveUnit
 
   type Board = Map[Coord, Unit]
+
+  def distance(a: Coord, b: Coord): Int = Math.abs(b.x - a.x) + Math.abs(a.y - b.y)
+
+  implicit object CoordOrdering extends Ordering[Coord] {
+    def compare(a: Coord, b: Coord): Int = {
+      if(a.y == b.y) a.x compare b.x
+      else          a.y compare b.y
+    }
+  }
+
+  def adjacencies(p: Coord): List[Coord] =
+    List(Up, Left, Right, Down).map(p + _)
+
+  def isAdjacent(p: Coord, q: Coord): Boolean =
+    p.x == q.x && Math.abs(p.y-q.y) == 1 || p.y == q.y && Math.abs(p.x-q.x) == 1
 
   def showUnit(u: Unit): String =
     u match {
