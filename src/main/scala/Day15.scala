@@ -4,6 +4,21 @@ object Day15 {
   case class Coord(x: Int, y: Int) {
     def +(other: Coord): Coord = Coord(x+other.x, y+other.y)
   }
+  def distance(a: Coord, b: Coord): Int = Math.abs(b.x - a.x) + Math.abs(a.y - b.y)
+
+  def adjacencies(p: Coord): List[Coord] =
+    List(Up, Left, Right, Down).map(p + _)
+
+  def isAdjacent(p: Coord, q: Coord): Boolean =
+    p.x == q.x && Math.abs(p.y-q.y) == 1 || p.y == q.y && Math.abs(p.x-q.x) == 1
+
+  implicit object CoordOrdering extends Ordering[Coord] {
+    def compare(a: Coord, b: Coord): Int = {
+      if(a.y == b.y) a.x compare b.x
+      else          a.y compare b.y
+    }
+  }
+
   val Up    = Coord(0, -1)
   val Right = Coord(1, 0)
   val Down  = Coord(0, 1)
@@ -18,20 +33,21 @@ object Day15 {
 
   type Board = Map[Coord, Unit]
 
-  def distance(a: Coord, b: Coord): Int = Math.abs(b.x - a.x) + Math.abs(a.y - b.y)
+  def isOpen(board: Board, p: Coord): Boolean = !board.isDefinedAt(p)
 
-  implicit object CoordOrdering extends Ordering[Coord] {
-    def compare(a: Coord, b: Coord): Int = {
-      if(a.y == b.y) a.x compare b.x
-      else          a.y compare b.y
+  def liveUnits(board: Board): List[(Coord, LiveUnit)] =
+    board.toList.collect { case (c, u: LiveUnit) => (c, u) }.sortBy(_._1)
+
+  def targetUnits(board: Board, u: LiveUnit, p: Coord): List[(Coord, LiveUnit)] = {
+    u match {
+      case e: Elf    => liveUnits(board).collect { case (c, g: Goblin) => (c, g) }
+      case g: Goblin => liveUnits(board).collect { case (c, g: Elf) => (c, g) }
     }
   }
 
-  def adjacencies(p: Coord): List[Coord] =
-    List(Up, Left, Right, Down).map(p + _)
-
-  def isAdjacent(p: Coord, q: Coord): Boolean =
-    p.x == q.x && Math.abs(p.y-q.y) == 1 || p.y == q.y && Math.abs(p.x-q.x) == 1
+  def targetPoints(board: Board, ts: List[(Coord, LiveUnit)]): Set[Coord] = {
+    ts.flatMap ( t => adjacencies(t._1) ).filter(p => isOpen(board, p)).toSet
+  }
 
   def showUnit(u: Unit): String =
     u match {
