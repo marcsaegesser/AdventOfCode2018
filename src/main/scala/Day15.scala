@@ -35,6 +35,16 @@ object Day15 {
 
   def isOpen(board: Board, p: Coord): Boolean = !board.isDefinedAt(p)
 
+  def reachablePoints(board: Board, p: Coord): Set[Coord] = {
+    def helper(accum: Set[Coord], c: Coord): Set[Coord] = {
+      val newPoints = adjacencies(c).filterNot(accum.contains).filter(isOpen(board, _))
+      if(newPoints.isEmpty) accum
+      else                  newPoints.foldLeft(accum ++ newPoints) { case (a, c) => a ++ helper(a, c) }
+    }
+
+    helper(Set(), p)
+  }
+
   def liveUnits(board: Board): List[(Coord, LiveUnit)] =
     board.toList.collect { case (c, u: LiveUnit) => (c, u) }.sortBy(_._1)
 
