@@ -33,24 +33,55 @@ object Day15 {
 
   type Board = Map[Coord, Unit]
 
-  def runRound(board: Board): Board = {
-    // val live = liveUnits(board)
+  def runRound(board: Board): (Boolean, Board) = {
+    def helper(b: Board, units: List[(Coord, LiveUnit)]): (Boolean, Board) =
+      units match {
+        case Nil => (true, b)
+        case u :: us =>
+          runUnit(b, u._1, u._2) match {
+            case (false, nb) => (false, nb)
+            case (true, nb) => helper(nb, us)
+          }
+      }
 
-    ???
+    helper(board, liveUnits(board))
   }
 
-  def runUnit(board: Board, p: Coord, u: LiveUnit): Board = {
+  def runUnit(board: Board, p: Coord, u: LiveUnit): (Boolean, Board) = {
     val targets = targetUnits(board, p, u)
+    if(targets.isEmpty)             (false, board)
+    else if(board.get(p) != Some(u)) (true, board)  // This unit died before we could run it
+    else {
+      val next =
+        findAttack(board, p, u, targets).map(at => board )  // TODO: Implement attack
+          .orElse {
+            findMove(board, p, u, targets)
+              .map{ to =>
+                val b = moveUnit(board, p, to, u)
+                val b2 = findAttack(b, to, u, targets).map(at => board) // TODO: Implement attack
+                b2.getOrElse(b)
+              }
+          }
+          .getOrElse(board)
 
-    // Can attack
+      (true, next)
+    }
 
-    // Move
-    moveUnit(board, p, u, targets).map { to => updateBoard(board, p, to, u) }
-    ???
   }
 
-  def updateBoard(board: Board, from: Coord, to: Coord, u: Unit): Board =
+  def moveUnit(board: Board, from: Coord, to: Coord, u: Unit): Board =
     board - from + ((to, u))
+
+  def findAttack(board: Board, p: Coord, u: LiveUnit, targets: List[(Coord, LiveUnit)]): Option[Coord] = {
+    targets
+      .filter(t => isAdjacent(t._1, p))
+      .sortBy(_._1)
+      .headOption
+      .map { case (c, target) =>
+        println(s"fight at $c")
+        c
+      }
+  }
 
   object CoordDistOrdering extends Ordering[(Coord, Int)] {
     def compare(a: (Coord, Int), b: (Coord, Int)): Int =
@@ -58,13 +89,15 @@ object Day15 {
       else            a._2 compare b._2
   }
 
-  def moveUnit(board: Board, p: Coord, u: LiveUnit, targets: List[(Coord, LiveUnit)]): Option[Coord] = {
-      reachableTargetPoints(board, p, targets)
-        .map(tp => (tp, distance(p, tp)))
-        .toList
-        .sorted(CoordDistOrdering)
-        .headOption
-        .map{ case (t, _) => chooseStep(board, p, t) }
+  def findMove(board: Board, p: Coord, u: LiveUnit, targets: List[(Coord, LiveUnit)]): Option[Coord] = {
+    reachableTargetPoints(board, p, targets)
+      .map(tp => (tp, distance(p, tp)))
+      .toList
+      .sorted(CoordDistOrdering)
+      .headOption
+      .map{ case (t, _) =>
+        println(s"move to $t")
+        chooseStep(board, p, t) }
   }
 
   def chooseStep(board: Board, p: Coord, t: Coord): Coord = {
