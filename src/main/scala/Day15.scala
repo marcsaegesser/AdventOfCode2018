@@ -52,6 +52,10 @@ object Day15 {
 
     }
 
+  def getUnits(board: Board, cs: List[Coord]): List[LiveUnit] =
+    cs.map(board.get(_)).flatten.collect { case l: LiveUnit => l }
+
+
   def runCombat(board: Board): (Int, Board) = {
     def helper(round: Int, b: Board): (Int, Board) = {
       // Thread.sleep(1000)
@@ -91,7 +95,7 @@ object Day15 {
   def runUnit(board: Board, p: Coord, u: LiveUnit): (Boolean, Board) = {
     val targets = targetUnits(board, p, u)
     if(targets.isEmpty )             (false, board)
-    else if(unitMatches(board, p, u)) (true, board)  // This unit died before we could run it
+    else if(!unitMatches(board, p, u)) (true, board)  // This unit died before we could run it
     else {
       val next =
         runAttack(board, p, u, targets).map { case (at, b) => b }
@@ -112,7 +116,7 @@ object Day15 {
   def runAttack(board: Board, p: Coord, u: LiveUnit, targets: List[(Coord, LiveUnit)]): Option[(Coord, Board)] = {
     targets
       .filter(t => isAdjacent(t._1, p))
-      .sortBy(_._1)
+      .sortBy { case (c, u) => (u.hp, c) }
       .headOption
       .map { case (at, target) =>
         val newHP = target.hp - u.power
