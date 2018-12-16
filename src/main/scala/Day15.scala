@@ -121,18 +121,7 @@ object Day15 {
         .map(l => (l.head, l.size))
         .sorted(CoordDistOrdering)
         .headOption
-        .map { case (coord, _) => (coord, moveUnit(board, p, coord, u))
-
-        }
-    // reachableTargetPoints(board, p, targets)
-    //   .map(tp => (tp, distance(p, tp)))
-    //   .toList
-    //   .sorted(CoordDistOrdering)
-    //   .headOption
-    //   .map{ case (t, _) =>
-    //     val step = chooseStep(board, p, t)
-    //     (step, moveUnit(board, p, step, u))
-    //   }
+        .map { case (coord, _) => (coord, moveUnit(board, p, coord, u)) }
   }
 
   def chooseStep(board: Board, p: Coord, t: Coord): Coord = {
@@ -144,16 +133,6 @@ object Day15 {
   }
 
   def isOpen(board: Board, p: Coord): Boolean = !board.isDefinedAt(p)
-
-  // def reachablePoints(board: Board, p: Coord): Set[Coord] = {
-  //   def helper(accum: Set[Coord], c: Coord): Set[Coord] = {
-  //     val newPoints = adjacencies(c).filterNot(accum.contains).filter(isOpen(board, _))
-  //     if(newPoints.isEmpty) accum
-  //     else                  newPoints.foldLeft(accum ++ newPoints) { case (a, c) => a ++ helper(a, c) }
-  //   }
-
-  //   helper(Set(), p)
-  // }
 
   def targetPoints(board: Board, p: Coord): List[Coord] =
     adjacencies(p).filter(isOpen(board, _))
@@ -215,9 +194,20 @@ object Day15 {
       case Goblin(_,_) => "G"
     }
 
+  def showHP(u: Unit): String =
+    u match {
+      case Wall        => ""
+      case Open        => ""
+      case Elf(hp,_)    => s"E($hp)"
+      case Goblin(hp,_) => s"G($hp)"
+    }
+
   def showBoard(board: Board): String = {
-    def showRow(y: Int, x1: Int, x2: Int): String =
-      (x1 to x2).foldLeft(StringBuilder.newBuilder) { case (s, x) => s ++= showUnit(board.getOrElse(Coord(x,y), Open)) }.mkString
+    def showRow(y: Int, x1: Int, x2: Int): String = {
+      val b = (x1 to x2).foldLeft(StringBuilder.newBuilder) { case (s, x) => s ++= showUnit(board.getOrElse(Coord(x,y), Open)) }
+      val u = (x1 to x2).foldLeft(StringBuilder.newBuilder) { case (s, x) => s ++= showHP(board.getOrElse(Coord(x,y), Open)) }
+      (b ++= " " ++= u).mkString
+    }
 
     val (tl, br) = bounds(board)
 
