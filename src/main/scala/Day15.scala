@@ -1,6 +1,14 @@
 package advent
 
+import java.util.UUID
+
 object Day15 {
+
+  def part1(board: Board): Int = {
+    val (r, b) = runCombat(board)
+    r * liveUnits(b).map(_._2.hp).sum
+  }
+
   case class Coord(x: Int, y: Int) {
     def +(other: Coord): Coord = Coord(x+other.x, y+other.y)
   }
@@ -25,22 +33,33 @@ object Day15 {
   val Left  = Coord(-1, 0)
 
   sealed trait Unit
-  sealed trait LiveUnit extends Unit { def hp: Int; def power: Int; def newHP(x: Int): LiveUnit }
+  sealed trait LiveUnit extends Unit { def id: UUID; def hp: Int; def power: Int; def newHP(x: Int): LiveUnit }
   case object Wall                   extends Unit
   case object Open                   extends Unit
-  case class Elf(hp: Int, power: Int)    extends LiveUnit { def newHP(x: Int) = Elf(x, power) }
-  case class Goblin(hp: Int, power: Int) extends LiveUnit { def newHP(x: Int) = Goblin(x, power) }
+  case class Elf(id: UUID, hp: Int, power: Int)    extends LiveUnit { def newHP(x: Int) = Elf(id, x, power) }
+  case class Goblin(id: UUID, hp: Int, power: Int) extends LiveUnit { def newHP(x: Int) = Goblin(id, x, power) }
 
   type Board = Map[Coord, Unit]
 
+  def moveUnit(board: Board, from: Coord, to: Coord, u: Unit): Board =
+    board - from + ((to, u))
+
+  def updateBoard(board: Board, at: Coord, u: Unit): Board =
+    u match {
+      case Open => board - at
+      case Wall => ???
+      case u => board + ((at, u))
+
+    }
+
   def runCombat(board: Board): (Int, Board) = {
     def helper(round: Int, b: Board): (Int, Board) = {
-      Thread.sleep(1000)
+      // Thread.sleep(1000)
       println(s"$round")
       println(s"${showBoard(b)}")
       println("")
       runRound(b) match {
-        case (false, nb) => (round-1, nb)
+        case (false, nb) => (round, nb)
         case (true, nb) => helper(round+1, nb)
       }
     }
@@ -61,10 +80,18 @@ object Day15 {
     helper(board, liveUnits(board))
   }
 
+  def unitMatches(board: Board, p: Coord, u: LiveUnit): Boolean =
+    board.get(p).map {
+      _ match {
+        case l: LiveUnit => u.id == l.id
+        case _ => false
+      }
+    }.getOrElse(false)
+
   def runUnit(board: Board, p: Coord, u: LiveUnit): (Boolean, Board) = {
     val targets = targetUnits(board, p, u)
-    if(targets.isEmpty)             (false, board)
-    else if(board.get(p) != Some(u)) (true, board)  // This unit died before we could run it
+    if(targets.isEmpty )             (false, board)
+    else if(unitMatches(board, p, u)) (true, board)  // This unit died before we could run it
     else {
       val next =
         runAttack(board, p, u, targets).map { case (at, b) => b }
@@ -81,17 +108,6 @@ object Day15 {
     }
 
   }
-
-  def moveUnit(board: Board, from: Coord, to: Coord, u: Unit): Board =
-    board - from + ((to, u))
-
-  def updateBoard(board: Board, at: Coord, u: Unit): Board =
-    u match {
-      case Open => board - at
-      case Wall => ???
-      case u => board + ((at, u))
-
-    }
 
   def runAttack(board: Board, p: Coord, u: LiveUnit, targets: List[(Coord, LiveUnit)]): Option[(Coord, Board)] = {
     targets
@@ -180,26 +196,20 @@ object Day15 {
     }
   }
 
-  // def targetPoints(board: Board, ts: List[(Coord, LiveUnit)]): Set[Coord] =
-  //   ts.flatMap ( t => adjacencies(t._1) ).filter(p => isOpen(board, p)).toSet
-
-  // def reachableTargetPoints(board: Board, p: Coord, ts: List[(Coord, LiveUnit)]): Set[Coord] =
-  //   reachablePoints(board, p) & targetPoints(board, ts)
-
   def showUnit(u: Unit): String =
     u match {
       case Wall        => "#"
       case Open        => "."
-      case Elf(_,_)    => "E"
-      case Goblin(_,_) => "G"
+      case Elf(_, _,_)    => "E"
+      case Goblin(_, _,_) => "G"
     }
 
   def showHP(u: Unit): String =
     u match {
       case Wall        => ""
       case Open        => ""
-      case Elf(hp,_)    => s"E($hp)"
-      case Goblin(hp,_) => s"G($hp)"
+      case Elf(_, hp,_)    => s"E($hp)"
+      case Goblin(_, hp,_) => s"G($hp)"
     }
 
   def showBoard(board: Board): String = {
@@ -237,8 +247,8 @@ object Day15 {
   def parseUnit(c: Char): Unit =
     c match {
       case '#' => Wall
-      case 'E' => Elf(200, 3)
-      case 'G' => Goblin(200, 3)
+      case 'E' => Elf(UUID.randomUUID, 200, 3)
+      case 'G' => Goblin(UUID.randomUUID, 200, 3)
     }
 
 }
