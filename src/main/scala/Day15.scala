@@ -58,7 +58,6 @@ object Day15 {
 
   def runCombat(board: Board): (Int, Board) = {
     def helper(round: Int, b: Board): (Int, Board) = {
-      // Thread.sleep(1000)
       println(s"$round")
       println(s"${showBoard(b)}")
       println("")
@@ -119,6 +118,7 @@ object Day15 {
       .sortBy { case (c, u) => (u.hp, c) }
       .headOption
       .map { case (at, target) =>
+        println(s"attack:  $p $u -> $at $target")
         val newHP = target.hp - u.power
         val newBoard =
           if(newHP <= 0) updateBoard(board, at, Open)
@@ -141,7 +141,10 @@ object Day15 {
         .map(l => (l.head, l.size))
         .sorted(CoordDistOrdering)
         .headOption
-        .map { case (coord, _) => (coord, moveUnit(board, p, coord, u)) }
+        .map { case (coord, _) =>
+          println(s"move:  $p $u -> $coord")
+          (coord, moveUnit(board, p, coord, u))
+        }
   }
 
   def chooseStep(board: Board, p: Coord, t: Coord): Coord = {
