@@ -100,16 +100,17 @@ object Day15 {
       .headOption
       .map { case (at, target) =>
         val newHP = target.hp - u.power
-        if(newHP <= 0) updateBoard(board, at, Open)
-        else          updateBoard(board, at, target.newHP(newHP))
-        (at, board)
+        val newBoard =
+          if(newHP <= 0) updateBoard(board, at, Open)
+          else          updateBoard(board, at, target.newHP(newHP))
+        (at, newBoard)
       }
   }
 
   object CoordDistOrdering extends Ordering[(Coord, Int)] {
     def compare(a: (Coord, Int), b: (Coord, Int)): Int =
-      if(a._2 == b._2) CoordOrdering.compare(a._1, b._1)
-      else            a._2 compare b._2
+      if(a._2 == b._2) CoordOrdering.compare(a._1, b._1)  // If distances are the same choose coord in Reading Order
+      else            a._2 compare b._2                  // If distances are different take shortest distance
   }
 
   def runMove(board: Board, p: Coord, u: LiveUnit, targets: List[(Coord, LiveUnit)]): Option[(Coord, Board)] = {
