@@ -114,7 +114,16 @@ object Day15 {
   }
 
   def runMove(board: Board, p: Coord, u: LiveUnit, targets: List[(Coord, LiveUnit)]): Option[(Coord, Board)] = {
-    ???
+      targets.flatMap(t => targetPoints(board, t._1))
+        .map(pathToTarget(board, p, _))
+        .flatten
+        .sortBy(_.size)
+        .map(l => (l.head, l.size))
+        .sorted(CoordDistOrdering)
+        .headOption
+        .map { case (coord, _) => (coord, moveUnit(board, p, coord, u))
+
+        }
     // reachableTargetPoints(board, p, targets)
     //   .map(tp => (tp, distance(p, tp)))
     //   .toList
@@ -146,6 +155,9 @@ object Day15 {
   //   helper(Set(), p)
   // }
 
+  def targetPoints(board: Board, p: Coord): List[Coord] =
+    adjacencies(p).filter(isOpen(board, _))
+
   def pathsToTarget(board: Board, p: Coord, t: Coord): Set[List[Coord]] = {
     def helper(accum: Set[List[Coord]], path: List[Coord], c: Coord): Set[List[Coord]] = {
       if(c == t) {
@@ -167,7 +179,16 @@ object Day15 {
       }
     }
 
-    adjacencies(p).flatMap(c => helper(Set(), List(), c)).toSet
+    val ps = adjacencies(p).flatMap(c => helper(Set(), List(), c)).toSet
+    if(ps.isEmpty) ps
+    else {
+      val minSz = ps.map(_.size).min
+      ps.filter(_.size == minSz)
+    }
+  }
+
+  def pathToTarget(board: Board, p: Coord, t: Coord): Option[List[Coord]] = {
+    pathsToTarget(board, p, t).toList.sortBy(_.head).headOption
   }
 
   def liveUnits(board: Board): List[(Coord, LiveUnit)] =
@@ -180,8 +201,8 @@ object Day15 {
     }
   }
 
-  def targetPoints(board: Board, ts: List[(Coord, LiveUnit)]): Set[Coord] =
-    ts.flatMap ( t => adjacencies(t._1) ).filter(p => isOpen(board, p)).toSet
+  // def targetPoints(board: Board, ts: List[(Coord, LiveUnit)]): Set[Coord] =
+  //   ts.flatMap ( t => adjacencies(t._1) ).filter(p => isOpen(board, p)).toSet
 
   // def reachableTargetPoints(board: Board, p: Coord, ts: List[(Coord, LiveUnit)]): Set[Coord] =
   //   reachablePoints(board, p) & targetPoints(board, ts)
