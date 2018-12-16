@@ -25,13 +25,27 @@ object Day15 {
   val Left  = Coord(-1, 0)
 
   sealed trait Unit
-  sealed trait LiveUnit extends Unit { def hp: Int; def power: Int }
+  sealed trait LiveUnit extends Unit { def hp: Int; def power: Int; def newHP(x: Int): LiveUnit }
   case object Wall                   extends Unit
   case object Open                   extends Unit
-  case class Elf(hp: Int, power: Int)    extends LiveUnit
-  case class Goblin(hp: Int, power: Int) extends LiveUnit
+  case class Elf(hp: Int, power: Int)    extends LiveUnit { def newHP(x: Int) = Elf(x, power) }
+  case class Goblin(hp: Int, power: Int) extends LiveUnit { def newHP(x: Int) = Goblin(x, power) }
 
   type Board = Map[Coord, Unit]
+
+  def runCombat(board: Board): (Int, Board) = {
+    def helper(round: Int, b: Board): (Int, Board) = {
+      Thread.sleep(1000)
+      println(s"$round")
+      println(s"${showBoard(b)}")
+      println("")
+      runRound(b) match {
+        case (false, nb) => (round-1, nb)
+        case (true, nb) => helper(round+1, nb)
+      }
+    }
+    helper(0, board)
+  }
 
   def runRound(board: Board): (Boolean, Board) = {
     def helper(b: Board, units: List[(Coord, LiveUnit)]): (Boolean, Board) =
@@ -53,13 +67,12 @@ object Day15 {
     else if(board.get(p) != Some(u)) (true, board)  // This unit died before we could run it
     else {
       val next =
-        findAttack(board, p, u, targets).map(at => board )  // TODO: Implement attack
+        runAttack(board, p, u, targets).map { case (at, b) => b }
           .orElse {
-            findMove(board, p, u, targets)
-              .map{ to =>
-                val b = moveUnit(board, p, to, u)
-                val b2 = findAttack(b, to, u, targets).map(at => board) // TODO: Implement attack
-                b2.getOrElse(b)
+            runMove(board, p, u, targets)
+              .map{ case (to, b) =>
+                val b2 = runAttack(b, to, u, targets)
+                b2.map(_._2).getOrElse(b)
               }
           }
           .getOrElse(board)
@@ -72,14 +85,24 @@ object Day15 {
   def moveUnit(board: Board, from: Coord, to: Coord, u: Unit): Board =
     board - from + ((to, u))
 
-  def findAttack(board: Board, p: Coord, u: LiveUnit, targets: List[(Coord, LiveUnit)]): Option[Coord] = {
+  def updateBoard(board: Board, at: Coord, u: Unit): Board =
+    u match {
+      case Open => board - at
+      case Wall => ???
+      case u => board + ((at, u))
+
+    }
+
+  def runAttack(board: Board, p: Coord, u: LiveUnit, targets: List[(Coord, LiveUnit)]): Option[(Coord, Board)] = {
     targets
       .filter(t => isAdjacent(t._1, p))
       .sortBy(_._1)
       .headOption
-      .map { case (c, target) =>
-        println(s"fight at $c")
-        c
+      .map { case (at, target) =>
+        val newHP = target.hp - u.power
+        if(newHP <= 0) updateBoard(board, at, Open)
+        else          updateBoard(board, at, target.newHP(newHP))
+        (at, board)
       }
   }
 
@@ -89,15 +112,16 @@ object Day15 {
       else            a._2 compare b._2
   }
 
-  def findMove(board: Board, p: Coord, u: LiveUnit, targets: List[(Coord, LiveUnit)]): Option[Coord] = {
+  def runMove(board: Board, p: Coord, u: LiveUnit, targets: List[(Coord, LiveUnit)]): Option[(Coord, Board)] = {
     reachableTargetPoints(board, p, targets)
       .map(tp => (tp, distance(p, tp)))
       .toList
       .sorted(CoordDistOrdering)
       .headOption
       .map{ case (t, _) =>
-        println(s"move to $t")
-        chooseStep(board, p, t) }
+        val step = chooseStep(board, p, t)
+        (step, moveUnit(board, p, step, u))
+      }
   }
 
   def chooseStep(board: Board, p: Coord, t: Coord): Coord = {
