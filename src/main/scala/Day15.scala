@@ -174,15 +174,15 @@ object Day15 {
       else if(!isOpen(board, c)) accum
       else {
         val adjs = adjacencies(c).filterNot(path.contains).toSet
-        adjs.foldLeft(accum) { case (a, n) => a ++ helper(a, c :: path, n) }
+        adjs.par.foldLeft(accum) { case (a, n) => a ++ helper(a, c :: path, n) }
       }
     }
 
-    val ps = adjacencies(p).flatMap(c => helper(Set(), List(), c)).toSet
-    if(ps.isEmpty) ps
+    val ps = adjacencies(p).par.flatMap(c => helper(Set(), List(), c)).toSet
+    if(ps.isEmpty) ps.to[Set]
     else {
       val minSz = ps.map(_.size).min
-      ps.filter(_.size == minSz)
+      ps.filter(_.size == minSz).to[Set]
     }
   }
 
