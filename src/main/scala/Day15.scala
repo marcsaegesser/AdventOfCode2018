@@ -114,15 +114,16 @@ object Day15 {
   }
 
   def runMove(board: Board, p: Coord, u: LiveUnit, targets: List[(Coord, LiveUnit)]): Option[(Coord, Board)] = {
-    reachableTargetPoints(board, p, targets)
-      .map(tp => (tp, distance(p, tp)))
-      .toList
-      .sorted(CoordDistOrdering)
-      .headOption
-      .map{ case (t, _) =>
-        val step = chooseStep(board, p, t)
-        (step, moveUnit(board, p, step, u))
-      }
+    ???
+    // reachableTargetPoints(board, p, targets)
+    //   .map(tp => (tp, distance(p, tp)))
+    //   .toList
+    //   .sorted(CoordDistOrdering)
+    //   .headOption
+    //   .map{ case (t, _) =>
+    //     val step = chooseStep(board, p, t)
+    //     (step, moveUnit(board, p, step, u))
+    //   }
   }
 
   def chooseStep(board: Board, p: Coord, t: Coord): Coord = {
@@ -135,14 +136,38 @@ object Day15 {
 
   def isOpen(board: Board, p: Coord): Boolean = !board.isDefinedAt(p)
 
-  def reachablePoints(board: Board, p: Coord): Set[Coord] = {
-    def helper(accum: Set[Coord], c: Coord): Set[Coord] = {
-      val newPoints = adjacencies(c).filterNot(accum.contains).filter(isOpen(board, _))
-      if(newPoints.isEmpty) accum
-      else                  newPoints.foldLeft(accum ++ newPoints) { case (a, c) => a ++ helper(a, c) }
+  // def reachablePoints(board: Board, p: Coord): Set[Coord] = {
+  //   def helper(accum: Set[Coord], c: Coord): Set[Coord] = {
+  //     val newPoints = adjacencies(c).filterNot(accum.contains).filter(isOpen(board, _))
+  //     if(newPoints.isEmpty) accum
+  //     else                  newPoints.foldLeft(accum ++ newPoints) { case (a, c) => a ++ helper(a, c) }
+  //   }
+
+  //   helper(Set(), p)
+  // }
+
+  def pathsToTarget(board: Board, p: Coord, t: Coord): Set[List[Coord]] = {
+    def helper(accum: Set[List[Coord]], path: List[Coord], c: Coord): Set[List[Coord]] = {
+      if(c == t) {
+        val newPath = (c :: path).reverse
+        val sz = newPath.size
+        if(accum.isEmpty) accum + newPath
+        else {
+          val minSize = accum.map(_.size).min
+          if(sz < minSize) Set(newPath)
+          else if(sz == minSize) accum + newPath
+          else accum
+        }
+      }
+      else if(!accum.isEmpty && path.size > accum.map(_.size).min) accum
+      else if(!isOpen(board, c)) accum
+      else {
+        val adjs = adjacencies(c).filterNot(path.contains).toSet
+        adjs.foldLeft(accum) { case (a, n) => a ++ helper(a, c :: path, n) }
+      }
     }
 
-    helper(Set(), p)
+    adjacencies(p).flatMap(c => helper(Set(), List(), c)).toSet
   }
 
   def liveUnits(board: Board): List[(Coord, LiveUnit)] =
@@ -158,8 +183,8 @@ object Day15 {
   def targetPoints(board: Board, ts: List[(Coord, LiveUnit)]): Set[Coord] =
     ts.flatMap ( t => adjacencies(t._1) ).filter(p => isOpen(board, p)).toSet
 
-  def reachableTargetPoints(board: Board, p: Coord, ts: List[(Coord, LiveUnit)]): Set[Coord] =
-    reachablePoints(board, p) & targetPoints(board, ts)
+  // def reachableTargetPoints(board: Board, p: Coord, ts: List[(Coord, LiveUnit)]): Set[Coord] =
+  //   reachablePoints(board, p) & targetPoints(board, ts)
 
   def showUnit(u: Unit): String =
     u match {
