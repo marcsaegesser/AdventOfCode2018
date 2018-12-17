@@ -9,6 +9,22 @@ object Day15 {
     r * liveUnits(b).map(_._2.hp).sum
   }
 
+  def part2(board: Board) = {
+    val elfCount = countElves(board)
+
+    val (rounds, brd, e, p) =
+      Stream.from(4)
+        .map { p =>
+          val (r, b) = runCombat(updateElfPower(board, p))
+          (r, b, countElves(b), p)
+        }
+        .dropWhile(_._3 < elfCount).head
+
+    val result = rounds * liveUnits(brd).map(_._2.hp).sum
+    println(s"result=$result")
+    (rounds, brd, e, p)
+  }
+
   case class Coord(x: Int, y: Int) {
     def +(other: Coord): Coord = Coord(x+other.x, y+other.y)
   }
@@ -20,12 +36,7 @@ object Day15 {
   def isAdjacent(p: Coord, q: Coord): Boolean =
     p.x == q.x && Math.abs(p.y-q.y) == 1 || p.y == q.y && Math.abs(p.x-q.x) == 1
 
-  implicit object CoordOrdering extends Ordering[Coord] {
-    def compare(a: Coord, b: Coord): Int = {
-      if(a.y == b.y) a.x compare b.x
-      else          a.y compare b.y
-    }
-  }
+  implicit val coordOrdering = Ordering.by((c: Coord) => (c.y, c.x))
 
   val Up    = Coord(0, -1)
   val Right = Coord(1, 0)
@@ -41,8 +52,19 @@ object Day15 {
 
   type Board = Map[Coord, Unit]
 
+  def updateElfPower(board: Board, power: Int): Board =
+    board.mapValues { u =>
+      u match {
+        case e: Elf => e.copy(power=power)
+        case _      => u
+      }
+    }
+
+  def countElves(board: Board): Int =
+    board.values.collect { case u: Elf => u }.size
+
   def moveUnit(board: Board, from: Coord, to: Coord, u: Unit): Board =
-    board - from + ((to, u))
+    board + ((to, board(from))) - from
 
   def updateBoard(board: Board, at: Coord, u: Unit): Board =
     u match {
@@ -58,11 +80,11 @@ object Day15 {
 
   def runCombat(board: Board): (Int, Board) = {
     def helper(round: Int, b: Board): (Int, Board) = {
-      println(s"$round")
-      println(s"${showBoard(b)}")
-      println("")
+      // println(s"$round")
+      // println(s"${showBoard(b)}")
+      // println("")
       runRound(b) match {
-        case (false, nb) => (round, nb)
+        case (false, nb)    => (round, nb)
         case (true, nb) => helper(round+1, nb)
       }
     }
@@ -87,72 +109,78 @@ object Day15 {
     board.get(p).map {
       _ match {
         case l: LiveUnit => u.id == l.id
-        case _ => false
+        case _           => false
       }
     }.getOrElse(false)
 
   def runUnit(board: Board, p: Coord, u: LiveUnit): (Boolean, Board) = {
     val targets = targetUnits(board, p, u)
-    if(targets.isEmpty )             (false, board)
-    else if(!unitMatches(board, p, u)) (true, board)  // This unit died before we could run it
+    if(!unitMatches(board, p, u)) (true, board)  // This unit died before we could run it
+    else if(targets.isEmpty )     (false, board)  // No targets, we're done
     else {
       val next =
-        runAttack(board, p, u, targets).map { case (at, b) => b }
+        runAttack(board, p, u, targets)
+          .map { case (at, b) => b }         // An attack from p to at, pass along the new board, don't move
           .orElse {
-            runMove(board, p, u, targets)
-              .map{ case (to, b) =>
-                val b2 = runAttack(b, to, u, targets)
-                b2.map(_._2).getOrElse(b)
+            runMove(board, p, u, targets)    // No attack so move the unit
+              .map{ case (to, b) =>          // The unit moved. See if it can attack now
+                runAttack(b, to, u, targets)
+                  .map(_._2)                 // There was an attack, pass along the new board
+                  .getOrElse(b)              // No attack, use the board from the move
               }
           }
-          .getOrElse(board)
+          .getOrElse(board)                  // No action possible, board is unchanged
 
       (true, next)
     }
-
   }
 
   def runAttack(board: Board, p: Coord, u: LiveUnit, targets: List[(Coord, LiveUnit)]): Option[(Coord, Board)] = {
     targets
-      .filter(t => isAdjacent(t._1, p))
-      .sortBy { case (c, u) => (u.hp, c) }
-      .headOption
-      .map { case (at, target) =>
-        println(s"attack:  $p $u -> $at $target")
+      .filter(t => isAdjacent(t._1, p))       // Find adjacent targets
+      .sortBy { case (c, t) => (t.hp, c) }    // Sort by lowest HP, then reading-order
+      .headOption                             // Selected target, if any
+      .map { case (at, target) =>             // This unit attacks 'target' at location 'at'
         val newHP = target.hp - u.power
         val newBoard =
           if(newHP <= 0) updateBoard(board, at, Open)
           else          updateBoard(board, at, target.newHP(newHP))
+        // println(s"""attack:  ($u, $p) -> ($target, $at) ==> ${newBoard.getOrElse(at, " ")}""")
         (at, newBoard)
       }
   }
 
-  object CoordDistOrdering extends Ordering[(Coord, Int)] {
-    def compare(a: (Coord, Int), b: (Coord, Int)): Int =
-      if(a._2 == b._2) CoordOrdering.compare(a._1, b._1)  // If distances are the same choose coord in Reading Order
-      else            a._2 compare b._2                  // If distances are different take shortest distance
-  }
-
   def runMove(board: Board, p: Coord, u: LiveUnit, targets: List[(Coord, LiveUnit)]): Option[(Coord, Board)] = {
-      targets.flatMap(t => targetPoints(board, t._1))
-        .map(pathToTarget(board, p, _))
-        .flatten
-        .sortBy(_.size)
-        .map(l => (l.head, l.size))
-        .sorted(CoordDistOrdering)
-        .headOption
-        .map { case (coord, _) =>
-          println(s"move:  $p $u -> $coord")
-          (coord, moveUnit(board, p, coord, u))
-        }
+    chooseStep(board, p, u, targets.flatMap(t => targetPoints(board, t._1)).toSet)   // Compute open target points for targets
+      .map { coord =>
+        val newBoard = moveUnit(board, p, coord, u)
+        // println(s"move:  ($u, $p) -> $coord => ${newBoard(coord)}")
+        (coord, newBoard)
+      }
   }
 
-  def chooseStep(board: Board, p: Coord, t: Coord): Coord = {
-    adjacencies(p)
-      .filter(c => isOpen(board, c))
-      .map(c => (c, distance(c, t)))
-      .sorted(CoordDistOrdering)
-      .head._1
+  // An expanding shell of reachable coords
+  def findClosest(board: Board, p: Coord, targetPoints: Set[Coord]): Option[(Int, Coord)] = {
+    def helper(accum: Map[Coord, Int], dist: Int, newCoords: Set[Coord]): Option[(Int, Coord)] =
+      if(newCoords.isEmpty) None // No target paths found
+      else {
+        val hits = newCoords & targetPoints                           // Intersection of next coords with target points
+        if(hits.isEmpty) {
+          val nextAccum = accum ++ newCoords.map((_, dist))        // Add new coords to shell
+          val next = newCoords.map(c => openAdjacencies(board, c)).flatten.filterNot(c => accum.keySet.contains(c))
+          helper(nextAccum, dist+1, next)
+        } else {
+          Some((dist, hits.toList.sorted.head))
+        }
+      }
+
+    helper(Map.empty[Coord, Int], 0, Set(p))
+  }
+
+  def chooseStep(board: Board, p: Coord, u: LiveUnit, tps: Set[Coord]): Option[Coord] = {
+    findClosest(board, p, tps).flatMap { case (d, t) =>
+      findClosest(board, t, targetPoints(board, p).toSet)
+    }.map(_._2)
   }
 
   def isOpen(board: Board, p: Coord): Boolean = !board.isDefinedAt(p)
@@ -160,38 +188,8 @@ object Day15 {
   def targetPoints(board: Board, p: Coord): List[Coord] =
     adjacencies(p).filter(isOpen(board, _))
 
-  def pathsToTarget(board: Board, p: Coord, t: Coord): Set[List[Coord]] = {
-    def helper(accum: Set[List[Coord]], path: List[Coord], c: Coord): Set[List[Coord]] = {
-      if(c == t) {
-        val newPath = (c :: path).reverse
-        val sz = newPath.size
-        if(accum.isEmpty) accum + newPath
-        else {
-          val minSize = accum.map(_.size).min
-          if(sz < minSize) Set(newPath)
-          else if(sz == minSize) accum + newPath
-          else accum
-        }
-      }
-      else if(!accum.isEmpty && path.size > accum.map(_.size).min) accum
-      else if(!isOpen(board, c)) accum
-      else {
-        val adjs = adjacencies(c).filterNot(path.contains).toSet
-        adjs.par.foldLeft(accum) { case (a, n) => a ++ helper(a, c :: path, n) }
-      }
-    }
-
-    val ps = adjacencies(p).par.flatMap(c => helper(Set(), List(), c)).toSet
-    if(ps.isEmpty) ps.to[Set]
-    else {
-      val minSz = ps.map(_.size).min
-      ps.filter(_.size == minSz).to[Set]
-    }
-  }
-
-  def pathToTarget(board: Board, p: Coord, t: Coord): Option[List[Coord]] = {
-    pathsToTarget(board, p, t).toList.sortBy(_.head).headOption
-  }
+  def openAdjacencies(board: Board, p: Coord): Set[Coord] =
+    adjacencies(p).filter(c => isOpen(board, c)).toSet
 
   def liveUnits(board: Board): List[(Coord, LiveUnit)] =
     board.toList.collect { case (c, u: LiveUnit) => (c, u) }.sortBy(_._1)
@@ -199,22 +197,22 @@ object Day15 {
   def targetUnits(board: Board, p: Coord, u: LiveUnit): List[(Coord, LiveUnit)] = {
     u match {
       case e: Elf    => liveUnits(board).collect { case (c, g: Goblin) => (c, g) }
-      case g: Goblin => liveUnits(board).collect { case (c, g: Elf) => (c, g) }
+      case g: Goblin => liveUnits(board).collect { case (c, e: Elf) => (c, e) }
     }
   }
 
   def showUnit(u: Unit): String =
     u match {
-      case Wall        => "#"
-      case Open        => "."
+      case Wall           => "#"
+      case Open           => "."
       case Elf(_, _,_)    => "E"
       case Goblin(_, _,_) => "G"
     }
 
   def showHP(u: Unit): String =
     u match {
-      case Wall        => ""
-      case Open        => ""
+      case Wall            => ""
+      case Open            => ""
       case Elf(_, hp,_)    => s"E($hp)"
       case Goblin(_, hp,_) => s"G($hp)"
     }
@@ -245,6 +243,14 @@ object Day15 {
   def loadData(file: String): Board = {
     io.Source.fromFile(file)
       .getLines()
+      .zip(Stream.from(0).toIterator)
+      .flatMap{ case (l, y) =>
+        l.zip(Stream.from(0)).collect { case (c, x) if c != '.' => (Coord(x, y), parseUnit(c)) } }
+      .toMap
+  }
+
+  def parseBoard(s: String): Board = {
+    s.lines
       .zip(Stream.from(0).toIterator)
       .flatMap{ case (l, y) =>
         l.zip(Stream.from(0)).collect { case (c, x) if c != '.' => (Coord(x, y), parseUnit(c)) } }
