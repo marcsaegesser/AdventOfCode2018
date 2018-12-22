@@ -2,6 +2,19 @@ package advent
 
 import scala.annotation.tailrec
 
+// object Fubar {
+//   def puzzle() = {
+//     var r4 = 0
+//     var r5 = r4 | 0x10000
+//     r4 = 0x1AF0C5
+//     var r1 = r5 & 0xFF
+//     r4 = r4 + r1
+//     r4 = r4 & 0xFFFFFF
+//     r4 = r4 * 0x01016B
+//     r4 = r4 & 0xFFFFFF
+
+//   }
+// }
 
 object Day21 {
   sealed trait Directive
@@ -30,9 +43,9 @@ object Day21 {
   case object Break    extends State
   case object Halt     extends State
 
-  case class ProgramState(ip: Int, ipReg: Option[Int], regs: Vector[Int], state: State, bps: Set[Int], code: Vector[Instruction])
+  case class ProgramState(ip: Int, ipReg: Option[Int], regs: Vector[Int], state: State, bps: Set[Int], wps: Set[Int], vs: Set[Int], code: Vector[Instruction])
   def mkProgram(ipReg: Option[Int], code: Vector[Instruction]) =
-    ProgramState(0, ipReg, Vector(0, 0, 0, 0, 0, 0), Runnable, Set(), code)
+    ProgramState(0, ipReg, Vector(0, 0, 0, 0, 0, 0), Runnable, Set(), Set(), Set(), code)
 
   def setRegister(state: ProgramState, r: Int, v: Int): ProgramState =
     state.copy(regs=state.regs.updated(r, v))
@@ -43,8 +56,11 @@ object Day21 {
   def removeBreakpoint(state: ProgramState, bp: Int): ProgramState =
     state.copy(bps = state.bps - bp)
 
+  def addWatch(state: ProgramState, wp: Int): ProgramState =
+    state.copy(wps = state.wps + wp)
+
   def showState(state: ProgramState): String =
-    state match { case ProgramState(ip, ipReg, regs, state, bps, code) =>
+    state match { case ProgramState(ip, ipReg, regs, state, bps, wps, _, code) =>
       s"""$ip [${regs.mkString(" ")}] ${code.lift(ip).getOrElse("")}"""
     }
 
@@ -71,17 +87,26 @@ object Day21 {
   }
 
   def stepMachine(state: ProgramState): ProgramState =
-    state match { case ProgramState(ip, ipReg, regs, st, bps, code) =>
+    state match { case ProgramState(ip, ipReg, regs, st, bps, wps, vs, code) =>
       if(!code.isDefinedAt(ip)) state.copy(state=Halt)
-      // else if(bps.contains(ip)) {
-      //   println(showState(state))
-      //   state.copy(state=Break)
-      // }
       else {
-        val r1 = ipReg.map(r => regs.updated(r, ip.toInt)).getOrElse(regs)
-        val r2 = evalInstruction(code(ip), r1)
-        val nextIP = ipReg.map(r => r2(r).toInt).getOrElse(ip)
-        state.copy(ip=nextIP+1, regs=r2)
+        if(wps.contains(ip)) println(showState(state))
+        if(ip == 28) {
+          println(showState(state))
+          if(vs.contains(regs(4))) {
+            state.copy(state=Halt)
+          } else {
+            val r1 = ipReg.map(r => regs.updated(r, ip.toInt)).getOrElse(regs)
+            val r2 = evalInstruction(code(ip), r1)
+            val nextIP = ipReg.map(r => r2(r).toInt).getOrElse(ip)
+            state.copy(ip=nextIP+1, regs=r2, vs=vs+regs(4))
+          }
+        } else {
+          val r1 = ipReg.map(r => regs.updated(r, ip.toInt)).getOrElse(regs)
+          val r2 = evalInstruction(code(ip), r1)
+          val nextIP = ipReg.map(r => r2(r).toInt).getOrElse(ip)
+          state.copy(ip=nextIP+1, regs=r2)
+        }
       }
     }
 
@@ -92,7 +117,7 @@ object Day21 {
   }
 
   def continue(state: ProgramState): ProgramState =
-    runMachine(state.copy(state=Runnable))
+    state.copy(state=Runnable)
 
   def evalGT(a: Int, b: Int): Int =
     if(a > b) 1
