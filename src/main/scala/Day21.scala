@@ -8,51 +8,77 @@ object Day21 {
   case class SetIPReg(reg: Int) extends Directive
 
   sealed trait Instruction
-  case class Addr(a: Long, b: Long, c: Int) extends Instruction
-  case class Addi(a: Long, b: Long, c: Int) extends Instruction
-  case class Mulr(a: Long, b: Long, c: Int) extends Instruction
-  case class Muli(a: Long, b: Long, c: Int) extends Instruction
-  case class Banr(a: Long, b: Long, c: Int) extends Instruction
-  case class Bani(a: Long, b: Long, c: Int) extends Instruction
-  case class Borr(a: Long, b: Long, c: Int) extends Instruction
-  case class Bori(a: Long, b: Long, c: Int) extends Instruction
-  case class Setr(a: Long, b: Long, c: Int) extends Instruction
-  case class Seti(a: Long, b: Long, c: Int) extends Instruction
-  case class Gtir(a: Long, b: Long, c: Int) extends Instruction
-  case class Gtri(a: Long, b: Long, c: Int) extends Instruction
-  case class Gtrr(a: Long, b: Long, c: Int) extends Instruction
-  case class Eqir(a: Long, b: Long, c: Int) extends Instruction
-  case class Eqri(a: Long, b: Long, c: Int) extends Instruction
-  case class Eqrr(a: Long, b: Long, c: Int) extends Instruction
+  case class Addr(a: Int, b: Int, c: Int) extends Instruction
+  case class Addi(a: Int, b: Int, c: Int) extends Instruction
+  case class Mulr(a: Int, b: Int, c: Int) extends Instruction
+  case class Muli(a: Int, b: Int, c: Int) extends Instruction
+  case class Banr(a: Int, b: Int, c: Int) extends Instruction
+  case class Bani(a: Int, b: Int, c: Int) extends Instruction
+  case class Borr(a: Int, b: Int, c: Int) extends Instruction
+  case class Bori(a: Int, b: Int, c: Int) extends Instruction
+  case class Setr(a: Int, b: Int, c: Int) extends Instruction
+  case class Seti(a: Int, b: Int, c: Int) extends Instruction
+  case class Gtir(a: Int, b: Int, c: Int) extends Instruction
+  case class Gtri(a: Int, b: Int, c: Int) extends Instruction
+  case class Gtrr(a: Int, b: Int, c: Int) extends Instruction
+  case class Eqir(a: Int, b: Int, c: Int) extends Instruction
+  case class Eqri(a: Int, b: Int, c: Int) extends Instruction
+  case class Eqrr(a: Int, b: Int, c: Int) extends Instruction
 
-  case class ProgramState(ip: Int, ipReg: Option[Int], regs: Vector[Long], code: Vector[Instruction])
+  sealed trait State
+  case object Runnable extends State
+  case object Break    extends State
+  case object Halt     extends State
+
+  case class ProgramState(ip: Int, ipReg: Option[Int], regs: Vector[Int], state: State, bps: Set[Int], code: Vector[Instruction])
   def mkProgram(ipReg: Option[Int], code: Vector[Instruction]) =
-    ProgramState(0, ipReg, Vector(0, 0, 0, 0, 0, 0), code)
+    ProgramState(0, ipReg, Vector(0, 0, 0, 0, 0, 0), Runnable, Set(), code)
+
+  def setRegister(state: ProgramState, r: Int, v: Int): ProgramState =
+    state.copy(regs=state.regs.updated(r, v))
+
+  def addBreakpoint(state: ProgramState, bp: Int): ProgramState =
+    state.copy(bps = state.bps + bp)
+
+  def removeBreakpoint(state: ProgramState, bp: Int): ProgramState =
+    state.copy(bps = state.bps - bp)
 
   def showState(state: ProgramState): String =
-    state match { case ProgramState(ip, ipReg, regs, code) =>
+    state match { case ProgramState(ip, ipReg, regs, state, bps, code) =>
       s"""$ip [${regs.mkString(" ")}] ${code.lift(ip).getOrElse("")}"""
     }
 
 
   @tailrec
   def runMachine(state: ProgramState): ProgramState = {
-    if(!state.code.isDefinedAt(state.ip)) state
+    if(state.state != Runnable) state
+    else if(state.bps.contains(state.ip)) {
+      println(showState(state))
+      state.copy(state=Break)
+    }
     else runMachine(stepMachine(state))
-  }
+ }
 
   @tailrec
   def runMachineAndShow(state: ProgramState): ProgramState = {
     Thread.sleep(500)
-    if(!state.code.isDefinedAt(state.ip)) state
+    if(state.state != Runnable) state
     else runMachineAndShow(stepAndShow(state))
+    // if(state.state == Halt) state
+    // else if(!state.code.isDefinedAt(state.ip)) state.copy(state=Halt)
+    // else if(state.bps.contains(state.ip)) state.copy(state=Break)
+    // else runMachineAndShow(stepAndShow(state))
   }
 
   def stepMachine(state: ProgramState): ProgramState =
-    state match { case ProgramState(ip, ipReg, regs, code) =>
-      if(!code.isDefinedAt(ip)) state
+    state match { case ProgramState(ip, ipReg, regs, st, bps, code) =>
+      if(!code.isDefinedAt(ip)) state.copy(state=Halt)
+      // else if(bps.contains(ip)) {
+      //   println(showState(state))
+      //   state.copy(state=Break)
+      // }
       else {
-        val r1 = ipReg.map(r => regs.updated(r, ip.toLong)).getOrElse(regs)
+        val r1 = ipReg.map(r => regs.updated(r, ip.toInt)).getOrElse(regs)
         val r2 = evalInstruction(code(ip), r1)
         val nextIP = ipReg.map(r => r2(r).toInt).getOrElse(ip)
         state.copy(ip=nextIP+1, regs=r2)
@@ -65,32 +91,35 @@ object Day21 {
     next
   }
 
-  def evalGT(a: Long, b: Long): Long =
+  def continue(state: ProgramState): ProgramState =
+    runMachine(state.copy(state=Runnable))
+
+  def evalGT(a: Int, b: Int): Int =
     if(a > b) 1
     else 0
 
-  def evalEQ(a: Long, b: Long): Long =
+  def evalEQ(a: Int, b: Int): Int =
     if(a == b) 1
     else 0
 
-  def evalInstruction(i: Instruction, regs: Vector[Long]): Vector[Long] = {
+  def evalInstruction(i: Instruction, regs: Vector[Int]): Vector[Int] = {
       i match {
-        case Addr(a: Long, b: Long, c: Int) => regs.updated(c, regs(a.toInt) + regs(b.toInt))
-        case Addi(a: Long, b: Long, c: Int) => regs.updated(c, regs(a.toInt) + b)
-        case Mulr(a: Long, b: Long, c: Int) => regs.updated(c, regs(a.toInt) * regs(b.toInt))
-        case Muli(a: Long, b: Long, c: Int) => regs.updated(c, regs(a.toInt) * b)
-        case Banr(a: Long, b: Long, c: Int) => regs.updated(c, regs(a.toInt) & regs(b.toInt))
-        case Bani(a: Long, b: Long, c: Int) => regs.updated(c, regs(a.toInt) & b)
-        case Borr(a: Long, b: Long, c: Int) => regs.updated(c, regs(a.toInt) | regs(b.toInt))
-        case Bori(a: Long, b: Long, c: Int) => regs.updated(c, regs(a.toInt) | b)
-        case Setr(a: Long, b: Long, c: Int) => regs.updated(c, regs(a.toInt))
-        case Seti(a: Long, b: Long, c: Int) => regs.updated(c, a)
-        case Gtir(a: Long, b: Long, c: Int) => regs.updated(c, evalGT(a, regs(b.toInt)))
-        case Gtri(a: Long, b: Long, c: Int) => regs.updated(c, evalGT(regs(a.toInt), b))
-        case Gtrr(a: Long, b: Long, c: Int) => regs.updated(c, evalGT(regs(a.toInt), regs(b.toInt)))
-        case Eqir(a: Long, b: Long, c: Int) => regs.updated(c, evalEQ(a, regs(b.toInt)))
-        case Eqri(a: Long, b: Long, c: Int) => regs.updated(c, evalEQ(regs(a.toInt), b))
-        case Eqrr(a: Long, b: Long, c: Int) => regs.updated(c, evalEQ(regs(a.toInt), regs(b.toInt)))
+        case Addr(a: Int, b: Int, c: Int) => regs.updated(c, regs(a.toInt) + regs(b.toInt))
+        case Addi(a: Int, b: Int, c: Int) => regs.updated(c, regs(a.toInt) + b)
+        case Mulr(a: Int, b: Int, c: Int) => regs.updated(c, regs(a.toInt) * regs(b.toInt))
+        case Muli(a: Int, b: Int, c: Int) => regs.updated(c, regs(a.toInt) * b)
+        case Banr(a: Int, b: Int, c: Int) => regs.updated(c, regs(a.toInt) & regs(b.toInt))
+        case Bani(a: Int, b: Int, c: Int) => regs.updated(c, regs(a.toInt) & b)
+        case Borr(a: Int, b: Int, c: Int) => regs.updated(c, regs(a.toInt) | regs(b.toInt))
+        case Bori(a: Int, b: Int, c: Int) => regs.updated(c, regs(a.toInt) | b)
+        case Setr(a: Int, b: Int, c: Int) => regs.updated(c, regs(a.toInt))
+        case Seti(a: Int, b: Int, c: Int) => regs.updated(c, a)
+        case Gtir(a: Int, b: Int, c: Int) => regs.updated(c, evalGT(a, regs(b.toInt)))
+        case Gtri(a: Int, b: Int, c: Int) => regs.updated(c, evalGT(regs(a.toInt), b))
+        case Gtrr(a: Int, b: Int, c: Int) => regs.updated(c, evalGT(regs(a.toInt), regs(b.toInt)))
+        case Eqir(a: Int, b: Int, c: Int) => regs.updated(c, evalEQ(a, regs(b.toInt)))
+        case Eqri(a: Int, b: Int, c: Int) => regs.updated(c, evalEQ(regs(a.toInt), b))
+        case Eqrr(a: Int, b: Int, c: Int) => regs.updated(c, evalEQ(regs(a.toInt), regs(b.toInt)))
       }
   }
 
@@ -100,25 +129,25 @@ object Day21 {
       case directiveRegex("ip", r) => SetIPReg(r.toInt)
     }
 
-  val instrRegex = """(\w+)\s+(\d+)\s+(\d+)\s+(\d+)""".r
+  val instrRegex = """(\w+)\s+(\d+)\s+(\d+)\s+(\d+).*""".r
   def parseInstruction(l: String): Instruction =
     l match {
-      case instrRegex("addr", a, b, c) => Addr(a.toLong, b.toLong, c.toInt)
-      case instrRegex("addi", a, b, c) => Addi(a.toLong, b.toLong, c.toInt)
-      case instrRegex("mulr", a, b, c) => Mulr(a.toLong, b.toLong, c.toInt)
-      case instrRegex("muli", a, b, c) => Muli(a.toLong, b.toLong, c.toInt)
-      case instrRegex("banr", a, b, c) => Banr(a.toLong, b.toLong, c.toInt)
-      case instrRegex("bani", a, b, c) => Bani(a.toLong, b.toLong, c.toInt)
-      case instrRegex("borr", a, b, c) => Borr(a.toLong, b.toLong, c.toInt)
-      case instrRegex("bori", a, b, c) => Bori(a.toLong, b.toLong, c.toInt)
-      case instrRegex("setr", a, b, c) => Setr(a.toLong, b.toLong, c.toInt)
-      case instrRegex("seti", a, b, c) => Seti(a.toLong, b.toLong, c.toInt)
-      case instrRegex("gtri", a, b, c) => Gtri(a.toLong, b.toLong, c.toInt)
-      case instrRegex("gtir", a, b, c) => Gtir(a.toLong, b.toLong, c.toInt)
-      case instrRegex("gtrr", a, b, c) => Gtrr(a.toLong, b.toLong, c.toInt)
-      case instrRegex("eqir", a, b, c) => Eqir(a.toLong, b.toLong, c.toInt)
-      case instrRegex("eqri", a, b, c) => Eqri(a.toLong, b.toLong, c.toInt)
-      case instrRegex("eqrr", a, b, c) => Eqrr(a.toLong, b.toLong, c.toInt)
+      case instrRegex("addr", a, b, c) => Addr(a.toInt, b.toInt, c.toInt)
+      case instrRegex("addi", a, b, c) => Addi(a.toInt, b.toInt, c.toInt)
+      case instrRegex("mulr", a, b, c) => Mulr(a.toInt, b.toInt, c.toInt)
+      case instrRegex("muli", a, b, c) => Muli(a.toInt, b.toInt, c.toInt)
+      case instrRegex("banr", a, b, c) => Banr(a.toInt, b.toInt, c.toInt)
+      case instrRegex("bani", a, b, c) => Bani(a.toInt, b.toInt, c.toInt)
+      case instrRegex("borr", a, b, c) => Borr(a.toInt, b.toInt, c.toInt)
+      case instrRegex("bori", a, b, c) => Bori(a.toInt, b.toInt, c.toInt)
+      case instrRegex("setr", a, b, c) => Setr(a.toInt, b.toInt, c.toInt)
+      case instrRegex("seti", a, b, c) => Seti(a.toInt, b.toInt, c.toInt)
+      case instrRegex("gtri", a, b, c) => Gtri(a.toInt, b.toInt, c.toInt)
+      case instrRegex("gtir", a, b, c) => Gtir(a.toInt, b.toInt, c.toInt)
+      case instrRegex("gtrr", a, b, c) => Gtrr(a.toInt, b.toInt, c.toInt)
+      case instrRegex("eqir", a, b, c) => Eqir(a.toInt, b.toInt, c.toInt)
+      case instrRegex("eqri", a, b, c) => Eqri(a.toInt, b.toInt, c.toInt)
+      case instrRegex("eqrr", a, b, c) => Eqrr(a.toInt, b.toInt, c.toInt)
     }
 
   def parseLine(l: String): Either[Directive, Instruction] =
@@ -142,5 +171,4 @@ object Day21 {
     }
     mkProgram(ipReg, is)
   }
-  
 }
