@@ -20,9 +20,9 @@ object Day20 {
 
   case class Coord(x: Int, y: Int) {
     def adjacencies: List[Coord] = List(north, east, south, west)
-    def north: Coord  = Coord(x,   y-1)
+    def north: Coord = Coord(x,   y-1)
     def east: Coord  = Coord(x+1, y)
-    def south: Coord  = Coord(x,   y+1)
+    def south: Coord = Coord(x,   y+1)
     def west: Coord  = Coord(x-1, y)
   }
 

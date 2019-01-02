@@ -3,6 +3,12 @@ package advent
 import scala.annotation.tailrec
 
 object Day22 {
+
+  def part1(cave: Cave): Int = {
+    riskLevel(cave)._1
+  }
+
+
   case class Coord(x: Int, y: Int) {
     def adjacencies: List[Coord] = List(up, down, left, right)
     def up:    Coord = Coord(x, y-1)
@@ -21,8 +27,13 @@ object Day22 {
   type RouteState = Map[Coord, Map[Tool, Time]]
   val initialRouteState: RouteState = Map(Coord(0,0) -> Map(Torch -> 0, Climbing -> 7))
 
-  case class Rescue(map: CaveMap, target: Coord, state: RouteState)
+  // case class Rescue(map: CaveMap, target: Coord, state: RouteState)
 
+  /** Run the nextState computation some number of iterations.
+    *
+    * This is *horribly* inefficient and I'm sure there are much
+    * better algorithms to solve this, but I don't care anymore.
+    */
   def runN(until: Int, map: CaveMap): RouteState = {
     @tailrec
     def helper(n: Int, state: RouteState): RouteState = {
@@ -34,6 +45,10 @@ object Day22 {
     helper(0, initialRouteState)
   }
 
+  /** Compute the route to the next reachable locations. Then
+    * backtrack to update routes to previous locations that now
+    * have shorter routes from the new locations.
+    */
   def nextState(state: RouteState, map: CaveMap, r: Int): RouteState = {
     val newCoords = diagnalFrom(r).map(c => (c, emptyAdjacents(state, c)))
     val (changed, newState) = updateLocations(state, map, newCoords)

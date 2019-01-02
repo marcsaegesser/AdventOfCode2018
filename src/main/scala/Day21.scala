@@ -2,20 +2,6 @@ package advent
 
 import scala.annotation.tailrec
 
-// object Fubar {
-//   def puzzle() = {
-//     var r4 = 0
-//     var r5 = r4 | 0x10000
-//     r4 = 0x1AF0C5
-//     var r1 = r5 & 0xFF
-//     r4 = r4 + r1
-//     r4 = r4 & 0xFFFFFF
-//     r4 = r4 * 0x01016B
-//     r4 = r4 & 0xFFFFFF
-
-//   }
-// }
-
 object Day21 {
   sealed trait Directive
   case class SetIPReg(reg: Int) extends Directive
@@ -79,11 +65,7 @@ object Day21 {
   def runMachineAndShow(state: ProgramState): ProgramState = {
     Thread.sleep(500)
     if(state.state != Runnable) state
-    else runMachineAndShow(stepAndShow(state))
-    // if(state.state == Halt) state
-    // else if(!state.code.isDefinedAt(state.ip)) state.copy(state=Halt)
-    // else if(state.bps.contains(state.ip)) state.copy(state=Break)
-    // else runMachineAndShow(stepAndShow(state))
+    else                       runMachineAndShow(stepAndShow(state))
   }
 
   def stepMachine(state: ProgramState): ProgramState =

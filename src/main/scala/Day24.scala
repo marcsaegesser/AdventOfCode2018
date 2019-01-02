@@ -4,15 +4,24 @@ import math.Integral.Implicits._
 import scala.annotation.tailrec
 
 object Day24 {
-
-  def part1(state: State): Unit = {
-    val result = runCombat(state)
-    checkResult(result) match {
-      case Winner(w, u)                           => println(s"$w wins with $u units.")
-      case Stalemate(immuneUnits, infectionUnits) => println(s"Stalemat:  ImmuneSystemUnits = $immuneUnits, InfectionUnits=$infectionUnits")
-    }
+  def day24(): Unit = {
+    val state = loadData("data/Day24.txt")
+    println(s"Day24.part1 = ${showResult(part1(state))}")
+    val (boost, units) = part2(state)
+    println(s"Day24.part2 = ${units} immune system units remain with a boost of ${boost}")
   }
 
+  def part1(state: State): CombatResult = {
+    checkResult(runCombat(state))
+  }
+
+  def part2(state: State): (Int, Int) = {
+    val (boost, result) = findMinBoost(state)
+    (boost, result(ImmuneSystem).groups.values.map(_.units).sum)
+  }
+
+  /** Find the minimum boost to the immune system that causes it to win.
+    */
   def findMinBoost(state: State): (Int, State) = {
     Stream
       .from(1)
@@ -27,20 +36,23 @@ object Day24 {
   }
 
   sealed trait CombatResult
-  case class Winner(winner: String, units: Int) extends CombatResult
+  case class Winner(winner: String, units: Int)             extends CombatResult
   case class Stalemate(immuneUnits: Int, infectionUnits: Int) extends CombatResult
+
+  def showResult(result: CombatResult): String =
+    result match {
+      case Winner(w, u)                           => s"$w wins with $u units."
+      case Stalemate(immuneUnits, infectionUnits) => s"Stalemat:  ImmuneSystemUnits = $immuneUnits, InfectionUnits=$infectionUnits"
+    }
 
   def checkResult(state: State): CombatResult = {
     val immuneUnits = state(ImmuneSystem).groups.values.map(_.units).sum
     val infectionUnits = state(Infection).groups.values.map(_.units).sum
-    if(immuneUnits > 0 && infectionUnits > 0)
-      Stalemate(immuneUnits, infectionUnits)
-    else if(immuneUnits > 0)
-      Winner(ImmuneSystem, immuneUnits)
-    else
-      Winner(Infection, infectionUnits)
-  }
 
+    if(immuneUnits > 0 && infectionUnits > 0) Stalemate(immuneUnits, infectionUnits)
+    else if(immuneUnits > 0)                 Winner(ImmuneSystem, immuneUnits)
+    else                                     Winner(Infection, infectionUnits)
+  }
 
 
   sealed trait AttackType
@@ -71,7 +83,6 @@ object Day24 {
   type State = Map[String, Army]
 
   case class TargetSelection(attackInitiative: Int, attackArmy: String, attackGroup: Int, defendArmy: String, defendGroup: Int, dammage: Int)
-
 
   def boostImmuneSystem(state: State, boost: Int): State = {
     val immuneArmy = state(ImmuneSystem)
